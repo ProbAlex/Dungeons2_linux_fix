@@ -23,6 +23,16 @@ chmod +x install.sh xauth.py
 
 If the game lives in another Steam library, the script reads `libraryfolders.vdf`. Point `STEAM_ROOT` at your Steam install if it is not `~/.local/share/Steam`.
 
+### Flatpak Steam
+
+`install.sh` also looks in `~/.var/app/com.valvesoftware.Steam/.local/share/Steam`. It then links this repo into the sandbox home (`~/.var/app/com.valvesoftware.Steam/.local/share/dungeons2-compat`), because the game sees that as `$HOME`. To set it by hand:
+
+```sh
+STEAM_ROOT=~/.var/app/com.valvesoftware.Steam/.local/share/Steam ./install.sh
+```
+
+If the game is in a library outside the sandbox (another drive), grant access first: `flatpak override --user --filesystem=/path/to/library com.valvesoftware.Steam`. The sandbox also needs `python3` (the Freedesktop runtime has it).
+
 In Steam, open the game's properties and set the launch option:
 
 ```text

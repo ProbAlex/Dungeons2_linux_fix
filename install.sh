@@ -9,9 +9,30 @@ if [ ! -f "$DLL" ]; then
     exit 1
 fi
 
-# The DLL looks for xauth.py in ~/.local/share/dungeons2-compat.
+# Find Steam: native, ~/.steam symlink, then Flatpak.
+FLATPAK_HOME="$HOME/.var/app/com.valvesoftware.Steam"
+if [ -z "${STEAM_ROOT:-}" ]; then
+    for cand in "$HOME/.local/share/Steam" "$HOME/.steam/steam" "$FLATPAK_HOME/.local/share/Steam"; do
+        if [ -f "$cand/steamapps/libraryfolders.vdf" ]; then
+            STEAM_ROOT=$cand
+            break
+        fi
+    done
+fi
+VDF="${STEAM_ROOT:-}/steamapps/libraryfolders.vdf"
+if [ ! -f "$VDF" ]; then
+    echo "Could not find libraryfolders.vdf. Set STEAM_ROOT." >&2
+    exit 1
+fi
+
+case "${STEAM_ROOT:-}" in
+    "$FLATPAK_HOME"/*) GAME_HOME=$FLATPAK_HOME ;;
+    *) GAME_HOME=$HOME ;;
+esac
+# The DLL looks for xauth.py in $HOME/.local/share/dungeons2-compat, where $HOME is
+# the one the game sees (the Flatpak sandbox home when Steam is a Flatpak).
 # If the repository was cloned elsewhere, link it there.
-COMPAT="$HOME/.local/share/dungeons2-compat"
+COMPAT="$GAME_HOME/.local/share/dungeons2-compat"
 if [ "$(CDPATH= cd -- "$COMPAT" 2>/dev/null && pwd -P)" != "$(cd -- "$ROOT" && pwd -P)" ]; then
     if [ -e "$COMPAT" ] || [ -L "$COMPAT" ]; then
         echo "$COMPAT exists but is not this repository." >&2
@@ -21,16 +42,6 @@ if [ "$(CDPATH= cd -- "$COMPAT" 2>/dev/null && pwd -P)" != "$(cd -- "$ROOT" && p
     mkdir -p "$(dirname "$COMPAT")"
     ln -s "$ROOT" "$COMPAT"
     echo "Linked $COMPAT -> $ROOT"
-fi
-
-STEAM_ROOT=${STEAM_ROOT:-$HOME/.local/share/Steam}
-if [ ! -f "$STEAM_ROOT/steamapps/libraryfolders.vdf" ] && [ -f "$HOME/.steam/steam/steamapps/libraryfolders.vdf" ]; then
-    STEAM_ROOT=$HOME/.steam/steam
-fi
-VDF="$STEAM_ROOT/steamapps/libraryfolders.vdf"
-if [ ! -f "$VDF" ]; then
-    echo "Could not find libraryfolders.vdf. Set STEAM_ROOT." >&2
-    exit 1
 fi
 
 LIB=$(awk '
